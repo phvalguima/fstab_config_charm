@@ -24,7 +24,7 @@ def install_fstab_config():
     #  * https://jujucharms.com/docs/devel/developer-getting-started
     #  * https://github.com/juju-solutions/layer-basic#overview
     #
-    set_flag('fstab-config.installed')
+    set_flag('fstab_config.installed')
 
 
 @when('config.changed.configmap')

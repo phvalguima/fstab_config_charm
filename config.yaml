@@ -1,16 +1,15 @@
 options:
-  ## Look at: https://github.com/charmed-kubernetes/charm-kubernetes-master/blob/master/config.yaml#L2
   configmap:
     type: string
     default: ""
     description: |
       Yaml configuration describing how fstab should look like:
       - filesystem: UUID=aaa-bbb
-	mountpoint: /
-	type: [nfs, ext2, ext3, ext4, vfat]
-	options: errors=remount,ro
-	dump: 0
-	pass: 1
+        mountpoint: /
+        type: [nfs, ext2, ext3, ext4, vfat]
+        options: errors=remount,ro
+        dump: 0
+        pass: 1
       In case of NFS, it is also possible to configure rsize and wsize
       with those fields in separate
   enforce-config:

@@ -30,8 +30,9 @@ def install_fstab_config():
 @when('config.changed.configmap')
 def config_changed():
     fstab_entries = hookenv.config('configmap')
-    # with open('./fstab_entries.yaml','w') as f:
-    #     f.write(fstab_entries)
+    # Do nothing configmap is empty
+    if fstab_entries == None or len(fstab_entries) == 0:
+        return
     configmap = yaml.load(fstab_entries)
     fstab_parser.dict_to_fstab(configmap, hookenv.config('enforce-config'))
     now = get_last_modification_fstab()

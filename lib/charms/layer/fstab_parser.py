@@ -57,7 +57,7 @@ def dict_to_fstab(fs_list, enforce=False):
             else:
                 fs['options'] = 'wsize={}'.format(
                     fs['wsize']
-                )                
+                )
     templ = Environment(loader=BaseLoader()).from_string(fstab_template)
     fstab_content = templ.render(fstab=fstab)
     with open('/etc/fstab', 'w') as f:
@@ -92,21 +92,6 @@ def fstab_to_dict(fstab):
             'mountpoint': attrs[1],
             'type': attrs[2]
         }
-        # NFS can carry extra params such as rsize and wsize
-        # as per: https://help.ubuntu.com/community/Fstab
-        # we need to account for a case where we have:
-        # Server:/share  /media/nfs  nfs  rsize=8192 and wsize=8192,noexec,nosuid
-        # that will break into 'rsize=8192','and','wsize=8192,noexec,nosuid'
-#        for param in attrs:
-#            if entry['type'] == 'nfs':
-#                if 'rsize' in param:
-#                    entry['rsize'] = param.split('=')[1]
-#                    attrs.remove(param)
-#                elif 'wsize' in param:
-#                    entry['wsize'] = param.split('=')[1]
-#                    attrs.remove(param)
-#                elif 'and' in param:
-#                    attrs.remove(param)
         if len(attrs) >= 4:
             entry['options'] = attrs[3]
         if len(attrs) >= 5:

@@ -63,31 +63,15 @@ class TestCharm(unittest.TestCase):
             return NEW_CONFIG
         elif config == 'enforce-config':
             return False
-    
+
     @patch('subprocess.check_output',
            Mock(return_value=""))
     @patch('charmhelpers.core.unitdata.kv')
-#    @patch('charmhelpers.core.unitdata.kv.flush',
-#           return_value=Mock())
-#    @patch('charmhelpers.core.unitdata.kv.set',
-#           return_value=Mock())
-#    @patch('open', return_value=Mock())
-#    @patch('close', return_value=Mock())
-#    @patch('readlines',
-#           return_value=EXPECTED_RESULT_FSTAB)
-#    @patch('write')
     @patch('charmhelpers.core.hookenv.config')
     def test_config_changed(self,
                             mock_hookenv_config,
                             mock_kv):
-#                            mock_write,
-#                            mock_readlines):
-        import pdb
-        pdb.set_trace()
-#        mock_hookenv_config.return_value = {
-#            'enforce-config': False,
-#            'configmap': NEW_CONFIG,
-#        }
+
         mock_hookenv_config.side_effect = self.mock_config_options
         mock_kv.return_value.set.return_value = Mock()
         mock_kv.return_value.flush.return_value = Mock()

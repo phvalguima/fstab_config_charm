@@ -1,0 +1,7 @@
+includes:
+  - 'layer:basic'
+options:
+  basic:
+    packages:
+      - python3-jinja2
+      - python3-yaml

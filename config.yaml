@@ -1,0 +1,23 @@
+options:
+  ## Look at: https://github.com/charmed-kubernetes/charm-kubernetes-master/blob/master/config.yaml#L2
+  configmap:
+    type: string
+    default: ""
+    description: |
+      Yaml configuration describing how fstab should look like:
+      - filesystem: UUID=aaa-bbb
+	mountpoint: /
+	type: [nfs, ext2, ext3, ext4, vfat]
+	options: errors=remount,ro
+	dump: 0
+	pass: 1
+      In case of NFS, it is also possible to configure rsize and wsize
+      with those fields in separate
+  enforce-config:
+    type: boolean
+    default: False
+    description: |
+      USE WITH CAUTION: if true, charm replaces /etc/fstab content
+      for configmap's. Otherwise, charm will only keep and enforce of file
+      systems described on configmap.
+      If configmap is None or empty, this config will not be applied

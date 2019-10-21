@@ -1,0 +1,3 @@
+# fstab-config charm
+Allows users to expose configuration to be applied to /etc/fstab
+on Juju level.

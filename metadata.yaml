@@ -1,4 +1,4 @@
-name: fstab_config
+name: fstab-config
 summary: Apply configmap to fstab file
 maintainer: Pedro Guimaraes <pedro.guimaraes@canonical.com>
 description: |

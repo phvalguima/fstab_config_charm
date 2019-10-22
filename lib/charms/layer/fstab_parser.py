@@ -63,6 +63,11 @@ def dict_to_fstab(fs_list, enforce=False):
     with open('/etc/fstab', 'w') as f:
         f.write(fstab_content)
         f.close()
+    # Ensure all folders are created beforehand
+    for fs in fstab:
+        if fs['mountpoint'] == None or len(fs['mountpoint']) == 0:
+            raise Exception("Mount point missing for {}".format(fs))
+        subprocess.check_output(['mkdir','-p',fs['mountpoint']])
     subprocess.check_output(['mount', '-a'])
 
 

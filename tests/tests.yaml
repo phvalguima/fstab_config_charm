@@ -1,0 +1,8 @@
+gate_bundles:
+- xenial.yaml
+- bionic.yaml
+smoke_bundles:
+- bionic.yaml
+tests:
+- tests.basic_deployment.BasicDeployment
+

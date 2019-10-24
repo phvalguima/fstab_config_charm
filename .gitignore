@@ -1,5 +1,6 @@
 .tox/
 __pycache__/
+.local/
 *.pyc
 *~
 .coverage

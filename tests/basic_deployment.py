@@ -12,13 +12,13 @@ import zaza.model as model
 CONFIGMAP_DEFAULT="""- filesystem: {}:/srv/data
   mountpoint: /test/nfs1
   type: nfs
-  options: errors=remount,ro
+  options: defaults
   dump: 1
   pass: 2
 - filesystem: {}:/srv/data
   mountpoint: /test2/nfs2
   type: nfs
-  options: errors=remount,ro
+  options: defaults
   dump: 1
   pass: 2
 """

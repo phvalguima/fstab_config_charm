@@ -1,7 +1,11 @@
 includes:
   - 'layer:basic'
+  - 'layer:options'
+  - 'layer:apt'
 options:
   basic:
     packages:
       - python3-jinja2
       - python3-yaml
+      - nfs-common
+      - cifs-utils

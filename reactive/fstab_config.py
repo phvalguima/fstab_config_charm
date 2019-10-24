@@ -27,6 +27,10 @@ def install_fstab_config():
     set_flag('fstab_config.installed')
 
 
+@when('fstab_config.installed')
+def set_installed_message():
+    hookenv.status_set('active','fstab is configured')
+
 @when('config.changed.configmap')
 def config_changed():
     fstab_entries = hookenv.config('configmap')

@@ -23,6 +23,8 @@ CONFIGMAP_DEFAULT="""- filesystem: {}:/srv/data
   pass: 2
 """
 
+MODEL_DEFAULT_NAME = 'default'
+
 class BasicDeployment(unittest.TestCase):
     
     def test_set_2_nfs_and_touch_file(self):        
@@ -39,7 +41,7 @@ class BasicDeployment(unittest.TestCase):
         print("NFS IPs found are: {} and {}".format(ip_nfs1, ip_nfs2))
         configmap = CONFIGMAP_DEFAULT.format(ip_nfs1, ip_nfs2)
         
-        model.async_set_application_config('default','fstab-config',configmap)
+        model.async_set_application_config(MODEL_DEFAULT_NAME,'fstab-config',configmap)
         time.sleep(300) # Wait five minutes and check for unit status        
         first_unit = model.get_units('fstab-config')[0]
         state = None        
@@ -47,4 +49,8 @@ class BasicDeployment(unittest.TestCase):
             print("Unit {} still on {} state".format(first_unit, state))
             time.sleep(180)
 
+        result1 = model.run_on_leader('fstab-config','sudo mkdir /test/nfs1/test')
+        self.assertEqual(result1['Code'], '0')
+        result2 = model.run_on_leader('fstab-config','sudo mkdir /test2/nfs2/test')
+        self.assertEqual(result2['Code'], '0')
         

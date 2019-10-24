@@ -3,6 +3,7 @@ import yaml
 
 from charms.reactive import when, when_not, set_flag
 from charms.layer import fstab_parser
+from charms.apt import queue_install
 from charmhelpers.core import hookenv, unitdata
 
 
@@ -24,14 +25,20 @@ def install_fstab_config():
     #  * https://jujucharms.com/docs/devel/developer-getting-started
     #  * https://github.com/juju-solutions/layer-basic#overview
     #
-    set_flag('fstab_config.installed')
+    queue_install(['nfs-common',
+                   'cifs-utils'])
+    hookenv.status_set('maintenance','waiting for installation')
 
 
-@when('fstab_config.installed')
+@when('apt.installed.nfs-common')
+@when('apt.installed.cifs-utils')
 def set_installed_message():
-    hookenv.status_set('active','fstab is configured')
+    set_flag('fstab_config.installed')    
+    hookenv.status_set('active','packages have been installed')
+
 
 @when('config.changed.configmap')
+@when('fstab_config.installed')
 def config_changed():
     fstab_entries = hookenv.config('configmap')
     # Do nothing configmap is empty

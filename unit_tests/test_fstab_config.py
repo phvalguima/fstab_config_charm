@@ -70,6 +70,8 @@ class TestCharm(unittest.TestCase):
     @patch('charmhelpers.core.hookenv.config')
     @patch('charmhelpers.core.hookenv.status_set',
            Mock(return_value=""))
+    @patch('charms.queue_install',
+           Mock(return_value=""))
     def test_config_changed(self,
                             mock_hookenv_config,
                             mock_kv):

@@ -33,14 +33,14 @@ def config_changed():
     # Do nothing configmap is empty
     if fstab_entries == None or len(fstab_entries) == 0:
         return
-    status_set('maintenance','[config-changed] updating fstab following configmap...')
+    hookenv.status_set('maintenance','[config-changed] updating fstab following configmap...')
     configmap = yaml.load(fstab_entries)
     fstab_parser.dict_to_fstab(configmap, hookenv.config('enforce-config'))
     now = get_last_modification_fstab()
     db = unitdata.kv()
     db.set('fstab_last_update', now)
     db.flush()
-    status_set('active','fstab is configured')
+    hookenv.status_set('active','fstab is configured')
 
 
 @when('update.status')

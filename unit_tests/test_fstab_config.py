@@ -68,6 +68,8 @@ class TestCharm(unittest.TestCase):
            Mock(return_value=""))
     @patch('charmhelpers.core.unitdata.kv')
     @patch('charmhelpers.core.hookenv.config')
+    @patch('charmhelpers.core.hookenv.status_set',
+           Mock(return_value=""))
     def test_config_changed(self,
                             mock_hookenv_config,
                             mock_kv):

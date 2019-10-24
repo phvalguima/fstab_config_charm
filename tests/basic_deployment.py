@@ -27,7 +27,9 @@ MODEL_DEFAULT_NAME = 'default'
 
 class BasicDeployment(unittest.TestCase):
     
-    def test_set_2_nfs_and_touch_file(self):        
+    def test_set_2_nfs_and_touch_file(self):
+        model_name = model.async_get_juju_model()
+        print("Model name is {}".format(model_name))
         first_unit_nfs1 = model.get_units('nfs1')[0]
         first_unit_nfs2 = model.get_units('nfs2')[0]
         while model.check_unit_workload_status(MODEL_NAME,first_unit_nfs1,'active') or \
@@ -41,7 +43,7 @@ class BasicDeployment(unittest.TestCase):
         print("NFS IPs found are: {} and {}".format(ip_nfs1, ip_nfs2))
         configmap = CONFIGMAP_DEFAULT.format(ip_nfs1, ip_nfs2)
         
-        model.async_set_application_config(MODEL_DEFAULT_NAME,'fstab-config',configmap)
+        model.async_set_application_config(model_name,'fstab-config',configmap)
         time.sleep(300) # Wait five minutes and check for unit status        
         first_unit = model.get_units('fstab-config')[0]
         state = None        

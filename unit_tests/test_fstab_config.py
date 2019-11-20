@@ -22,7 +22,7 @@ UUID=aaa-bbb / ext4 errors=remount-ro    0       1
 nfs:/testingand /test/and nfs rsize=10 and wsize=20,option 0 2
 """
 
-EXPECTED_RESULT_FSTAB="""# /etc/fstab: static file system information.
+TEST_001_EXPECTED_RESULT_FSTAB="""# /etc/fstab: static file system information.
 #
 # Use 'blkid' to print the universally unique identifier for a
 # device; this may be used with UUID= as a more robust way to name devices
@@ -39,7 +39,7 @@ nfs:/shares /test/var nfs rsize=10 and wsize=8192 0 2
 """
 
 
-NEW_CONFIG="""- filesystem: UUID=aaa-bbb
+TEST_001_NEW_CONFIG="""- filesystem: UUID=aaa-bbb
   mountpoint: /
   type: ext4
   options: testing
@@ -57,12 +57,35 @@ NEW_CONFIG="""- filesystem: UUID=aaa-bbb
 
 class TestCharm(unittest.TestCase):
 
-    @staticmethod
-    def mock_config_options(config):
-        if config == 'configmap':
-            return NEW_CONFIG
-        elif config == 'enforce-config':
-            return False
+    @patch('subprocess.check_output',
+           Mock(return_value=""))
+    @patch('charmhelpers.core.unitdata.kv')
+    @patch('charmhelpers.core.hookenv.config')
+    @patch('charmhelpers.core.hookenv.status_set',
+           Mock(return_value=""))
+#    @patch('charms.queue_install',
+#           Mock(return_value=""))
+    def test_001_config_changed_call(self,
+                                     mock_hookenv_config,
+                                     mock_kv):
+
+        def mock_config_options(config):
+            if config == 'configmap':
+                return TEST_001_NEW_CONFIG
+            elif config == 'mount-timeout':
+                return 20
+            elif config == 'enforce-config':
+                return False
+        mock_hookenv_config.side_effect = mock_config_options
+        mock_kv.return_value.get.return_value = ''
+        mock_kv.return_value.set.return_value = Mock()
+        mock_kv.return_value.flush.return_value = Mock()
+        m = mock_open(read_data = RAW_FSTAB)
+        with patch('charms.layer.fstab_parser.open', m):
+            config_changed()
+        m().write.assert_called_once_with(
+            TEST_001_EXPECTED_RESULT_FSTAB
+        )
 
     @patch('subprocess.check_output',
            Mock(return_value=""))
@@ -70,18 +93,28 @@ class TestCharm(unittest.TestCase):
     @patch('charmhelpers.core.hookenv.config')
     @patch('charmhelpers.core.hookenv.status_set',
            Mock(return_value=""))
-    @patch('charms.queue_install',
-           Mock(return_value=""))
-    def test_config_changed(self,
-                            mock_hookenv_config,
-                            mock_kv):
-
-        mock_hookenv_config.side_effect = self.mock_config_options
+#    @patch('charms.queue_install',
+#           Mock(return_value=""))
+    def test_002_config_changed_to_empty_value(self,
+                                               mock_hookenv_config,
+                                               mock_kv):
+        
+        def mock_config_options(config):
+            if config == 'configmap':
+                return ''
+            elif config == 'mount-timeout':
+                return 20
+            elif config == 'enforce-config':
+                return False
+        mock_hookenv_config.side_effect = mock_config_options
+        # Recover old config from TEST_001...
+        mock_kv.return_value.get.return_value = TEST_001_NEW_CONFIG
         mock_kv.return_value.set.return_value = Mock()
         mock_kv.return_value.flush.return_value = Mock()
-        m = mock_open(read_data = RAW_FSTAB)
+        m = mock_open(read_data = TEST_001_EXPECTED_RESULT_FSTAB)
         with patch('charms.layer.fstab_parser.open', m):
             config_changed()
         m().write.assert_called_once_with(
-            EXPECTED_RESULT_FSTAB
+            RAW_FSTAB
         )
+        

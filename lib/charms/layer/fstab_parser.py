@@ -16,20 +16,39 @@ fstab_template = """# /etc/fstab: static file system information.
 """
 
 
-def dict_to_fstab(fs_list, enforce=False):
+def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
     fstab = ''
+    # Ensure we keep the original value of configmap unchanged
+    if fs_configmap == None or \
+       len(fs_configmap) == 0:
+        fs_list = []
+    else:
+        fs_list = list(fs_configmap)
+
+    with open('/etc/fstab', 'r') as f:
+        fstab = fstab_to_dict(f.readlines())
+        f.close()
+
     if not enforce:
-        with open('/etc/fstab', 'r') as f:
-            fstab = fstab_to_dict(f.readlines())
-            f.close()
+        # Cleaning up old_configmap
+        if old_configmap != None and \
+           len(old_configmap) > 0:
+            for n in old_configmap:
+                for fs in fstab:
+                    if n['filesystem'] == fs['filesystem']:
+                        fstab.remove(fs)
+                        break
+        # Cleaning up double entries from fstab parameter
         for n in fs_list:
             for fs in fstab:
                 if n['filesystem'] == fs['filesystem']:
                     fstab.remove(fs)
                     break
-    for fs in fs_list:
-        fstab.append(fs)
+            fstab.append(fs)
+    else:
+        fstab = fs_list
 
+    # This takes care of fstab particularlities, such as "and" presence
     for fs in fstab:
         if ('rsize' in fs) and ('wsize' in fs) and (fs['type'] == 'nfs'):
             if len(fs['options']) > 0:
@@ -68,7 +87,10 @@ def dict_to_fstab(fs_list, enforce=False):
         if fs['mountpoint'] == None or len(fs['mountpoint']) == 0:
             raise Exception("Mount point missing for {}".format(fs))
         subprocess.check_output(['mkdir','-p',fs['mountpoint']])
-    subprocess.check_output(['mount', '-a'])
+    try:
+        subprocess.check_output(['mount', '-a'], timeout=timeout)
+    except subprocess.TimeoutExpired:
+        hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
 
 
 def fstab_to_dict(fstab):

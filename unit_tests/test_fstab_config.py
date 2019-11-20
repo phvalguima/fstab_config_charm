@@ -38,6 +38,19 @@ UUID=aaa-bbb / ext4 testing 0 1
 nfs:/shares /test/var nfs rsize=10 and wsize=8192 0 2
 """
 
+TEST_002_EXPECTED_RESULT_FSTAB="""# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+
+
+nfs:/testingand /test/and nfs rsize=10,wsize=20,option 0 2
+"""
+
+
 
 TEST_001_NEW_CONFIG="""- filesystem: UUID=aaa-bbb
   mountpoint: /
@@ -115,6 +128,6 @@ class TestCharm(unittest.TestCase):
         with patch('charms.layer.fstab_parser.open', m):
             config_changed()
         m().write.assert_called_once_with(
-            RAW_FSTAB
+            TEST_002_EXPECTED_RESULT_FSTAB
         )
         

@@ -17,6 +17,7 @@ fstab_template = """# /etc/fstab: static file system information.
 
 
 def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
+    
     fstab = ''
     # Ensure we keep the original value of configmap unchanged
     if fs_configmap == None or \
@@ -44,6 +45,7 @@ def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
                 if n['filesystem'] == fs['filesystem']:
                     fstab.remove(fs)
                     break
+        for fs in fs_list:
             fstab.append(fs)
     else:
         fstab = fs_list

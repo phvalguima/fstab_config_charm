@@ -35,7 +35,7 @@ def install_fstab_config():
 @when('apt.installed.cifs-utils')
 def set_installed_message():
     set_flag('fstab_config.installed')    
-    hookenv.status_set('active','packages have been installed')
+    hookenv.status_set('active','ready')
 
 
 def is_equal_list_dicts(a, b):
@@ -86,13 +86,16 @@ def config_changed():
     db.flush()
     db.set('previous_configmap', hookenv.config('configmap'))
     db.flush()
-    hookenv.status_set('active','fstab is configured')
+    hookenv.status_set('active','ready')
 
 
 @when('update.status')
 def update_status():
     recent_mod = get_last_modification_fstab()
     last_mod = unitdata.kv().get('stab_last_update')
+    hookenv.log('update_status: most recent mod happened on {} '
+                'and stored mod happened on {}'.format(recent_mod, last_mod),
+                hookenv.INFO)
     if recent_mod > last_mod:
         config_changed()
     try:

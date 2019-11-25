@@ -9,50 +9,47 @@ import time
 import zaza.model as model
 
 
-CONFIGMAP_DEFAULT="""- filesystem: {}:/srv/data
-  mountpoint: /test/nfs1
+CONFIGMAP_DEFAULT="""- filesystem: {}:/srv/test
+  mountpoint: /srv/test
   type: nfs
-  options: defaults
-  dump: 1
-  pass: 2
-- filesystem: {}:/srv/data
-  mountpoint: /test2/nfs2
-  type: nfs
-  options: defaults
-  dump: 1
-  pass: 2
+  options: rw,nosuid
 """
 
 MODEL_DEFAULT_NAME = 'default'
 
 class BasicDeployment(unittest.TestCase):
     
-    def test_set_2_nfs_and_touch_file(self):
-        model_name = model.async_get_juju_model()
-        print("Model name is {}".format(model_name))
-        first_unit_nfs1 = model.get_units('nfs1')[0]
-        first_unit_nfs2 = model.get_units('nfs2')[0]
-        while model.check_unit_workload_status(MODEL_NAME,first_unit_nfs1,'active') or \
-              model.check_unit_workload_status(MODEL_NAME,first_unit_nfs2,'active'):
-            print("Unit {} still not active".format(first_unit_nfs1))
-            print("Unit {} still not active".format(first_unit_nfs2))
-            time.sleep(180)
-        
-        ip_nfs1 = model.get_app_ips('nfs1')[0]
-        ip_nfs2 = model.get_app_ips('nfs2')[0]
-        print("NFS IPs found are: {} and {}".format(ip_nfs1, ip_nfs2))
-        configmap = CONFIGMAP_DEFAULT.format(ip_nfs1, ip_nfs2)
-        
-        model.async_set_application_config(model_name,'fstab-config',configmap)
-        time.sleep(300) # Wait five minutes and check for unit status        
-        first_unit = model.get_units('fstab-config')[0]
-        state = None        
-        while not state = model.check_unit_workload_status(MODEL_NAME,first_unit,'active'):
-            print("Unit {} still on {} state".format(first_unit, state))
-            time.sleep(180)
+    def test_001_nfs_integration(self):
 
-        result1 = model.run_on_leader('fstab-config','sudo mkdir /test/nfs1/test')
-        self.assertEqual(result1['Code'], '0')
-        result2 = model.run_on_leader('fstab-config','sudo mkdir /test2/nfs2/test')
-        self.assertEqual(result2['Code'], '0')
+        import pdb
+        pdb.set_trace()
+        nfs = model.get_units('ubuntu')[0]
+        fstab = model.get_units('fstab-config')[0]
+
+        while fstab.agent_status() != 'active' or \
+              nfs.agent_status() != 'active':
+            print("Status for charms are: {} {}".
+                  format(fstab.agent_status(),
+                         nfs.agent_status()))
+            time.sleep(300)
+        
+        model.run_on_leader('ubuntu', 'sudo mkdir /srv/nfs')
+        model.run_on_leader('ubuntu', 'echo "/srv/nfs *(rw,sync,no_subtree_check)" | sudo tee /etc/exports')
+        model.run_on_leader('ubuntu', 'sudo chown nobody:nogroup /srv/nfs')
+        model.run_on_leader('ubuntu', 'sudo chmod 777 /srv/nfs')
+        model.run_on_leader('ubuntu', 'sudo exportfs -r')
+
+        time.sleep(180)
+
+        fstab_config = CONFIGMAP_DEFAULT.format(nfs.public_address())
+        print("Testing on following option:\n{}".format(fstab_config))
+        model.get_application('fstab_config').set_config({'configmap': fstab_config})
+
+        time.sleep(120)
+        while fstab.agent_status() != 'active' or \
+              nfs.agent_status() != 'active':
+            print("Status for charms are: {} {}".
+                  format(fstab.agent_status(),
+                         nfs.agent_status()))
+            time.sleep(180)
         

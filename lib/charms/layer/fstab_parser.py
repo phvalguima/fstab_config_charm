@@ -93,6 +93,8 @@ def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
         subprocess.check_output(['mount', '-a'], timeout=timeout)
     except subprocess.TimeoutExpired:
         hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
+    except subprocess.CalledProcessError:
+        hookenv.status_set('blocked','MOUNT ERROR! Please, check configmap')
 
 
 def fstab_to_dict(fstab):

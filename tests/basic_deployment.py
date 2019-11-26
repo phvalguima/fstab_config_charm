@@ -7,49 +7,68 @@ charm does not have any relations or config options to exercise.
 import unittest
 import time
 import zaza.model as model
+import asyncio
 
-
-CONFIGMAP_DEFAULT="""- filesystem: {}:/srv/test
+CONFIGMAP_TEST_001="""- filesystem: {}:/srv/nfs
   mountpoint: /srv/test
   type: nfs
   options: rw,nosuid
 """
 
+CONFIGMAP_TEST_002=CONFIGMAP_TEST_001 + """
+- filesystem: /srv/test
+  mountpoint: /srv/testbind
+  type: none
+  options: bind
+"""
+
 MODEL_DEFAULT_NAME = 'default'
 
+
 class BasicDeployment(unittest.TestCase):
-    
+
+    nfs_public_address = ""
+
+
     def test_001_nfs_integration(self):
 
-        import pdb
-        pdb.set_trace()
-        nfs = model.get_units('ubuntu')[0]
-        fstab = model.get_units('fstab-config')[0]
+        nfs = model.get_unit_from_name('ubuntu/0')
+        fstab = model.get_unit_from_name('fstab-config/0')
 
-        while fstab.agent_status() != 'active' or \
-              nfs.agent_status() != 'active':
-            print("Status for charms are: {} {}".
-                  format(fstab.agent_status(),
-                         nfs.agent_status()))
-            time.sleep(300)
-        
+        model.run_on_leader('ubuntu', 'export DEBIAN_FRONTEND=noninteractive;'
+                            ' sudo apt -y install nfs-common '
+                            'nfs-kernel-server')
         model.run_on_leader('ubuntu', 'sudo mkdir /srv/nfs')
-        model.run_on_leader('ubuntu', 'echo "/srv/nfs *(rw,sync,no_subtree_check)" | sudo tee /etc/exports')
+        model.run_on_leader('ubuntu', 'echo "/srv/nfs '
+                            '*(rw,sync,no_subtree_check)" '
+                            '| sudo tee /etc/exports')
         model.run_on_leader('ubuntu', 'sudo chown nobody:nogroup /srv/nfs')
         model.run_on_leader('ubuntu', 'sudo chmod 777 /srv/nfs')
         model.run_on_leader('ubuntu', 'sudo exportfs -r')
 
-        time.sleep(180)
-
-        fstab_config = CONFIGMAP_DEFAULT.format(nfs.public_address())
+        self.nfs_public_address = nfs.public_address
+        fstab_config = CONFIGMAP_TEST_001.format(self.nfs_public_address)
         print("Testing on following option:\n{}".format(fstab_config))
-        model.get_application('fstab_config').set_config({'configmap': fstab_config})
 
-        time.sleep(120)
-        while fstab.agent_status() != 'active' or \
-              nfs.agent_status() != 'active':
-            print("Status for charms are: {} {}".
-                  format(fstab.agent_status(),
-                         nfs.agent_status()))
-            time.sleep(180)
+        async def await_app_config(name, config):
+            return(await model.async_set_application_config(name, config))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        fstab_app = loop.run_until_complete(await_app_config('fstab-config', {'configmap': fstab_config}))
         
+        result = model.run_on_leader('fstab-config', 'sudo touch /srv/test/test001')
+        self.assertEqual(result['Code'], '0')
+        
+        
+    def test_002_nfs_bind(self):
+
+        fstab_config = CONFIGMAP_TEST_002.format(self.nfs_public_address)
+        print("Testing on following option:\n{}".format(fstab_config))
+        async def await_app_config(name, config):
+            return(await model.async_set_application_config(name, config))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        fstab_app = loop.run_until_complete(await_app_config('fstab-config', {'configmap': fstab_config}))
+        
+        result = model.run_on_leader('fstab-config', 'sudo touch /srv/testbind/test002')
+        self.assertEqual(result['Code'], '0')

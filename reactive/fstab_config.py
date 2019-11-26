@@ -34,6 +34,10 @@ def install_fstab_config():
 @when('apt.installed.nfs-common')
 @when('apt.installed.cifs-utils')
 def set_installed_message():
+    db = unitdata.kv()
+    db.set('previous_configmap',"")
+    db.set('stab_last_update',"")
+    db.flush()
     set_flag('fstab_config.installed')    
     hookenv.status_set('active','ready')
 
@@ -75,11 +79,16 @@ def config_changed():
                     'configuration, ignoring...',
                     hookenv.INFO)
         return
-        
-    fstab_parser.dict_to_fstab(configmap,
-                               old_configmap,
-                               hookenv.config('enforce-config'),                               
-                               hookenv.config('mount-timeout'))
+
+    try:
+        fstab_parser.dict_to_fstab(configmap,
+                                   old_configmap,
+                                   hookenv.config('enforce-config'),                               
+                                   hookenv.config('mount-timeout'))
+    except subprocess.TimeoutExpired:
+        hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
+    except subprocess.CalledProcessError:
+        hookenv.status_set('blocked','MOUNT ERROR! Please, check configmap')
     
     now = get_last_modification_fstab()
     db.set('fstab_last_update', now)

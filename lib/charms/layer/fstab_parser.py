@@ -1,5 +1,7 @@
 import re
+import os
 import subprocess
+import yaml
 from jinja2 import Environment, BaseLoader
 
 fstab_template = """# /etc/fstab: static file system information.
@@ -15,12 +17,90 @@ fstab_template = """# /etc/fstab: static file system information.
 {% endfor %}
 """
 
+EXPECTED_FS_TYPES=["xt2", "ext3", "ext4", "xfs", "btrfs", "vfat", "sysfs", "proc", "nfs", "cifs", ""]
 
-def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
-    
+
+class ConfigmapMissingException(Exception):
+
+    ##
+    # Code values:
+    # 0 - filesystem key on configmap item missing
+    # 1 - mountpoint key on configmap item missing
+    # 2 - type key on configmap item missing
+    # 3 - Unknown failure when mountpoint mkdir -p was ran
+    # 4 - mountpoint folder is not empty
+    # 5 - NFS target unreachable
+    def __init__(self, message, errorcode):
+        super(ConfigmapMissingException, self).__init__(message)
+        self.errorcode = errorcode
+
+
+# Returns None if everything went OK
+# Returns message to WARN logs otherwise
+def check_configmap(txt_configmap):
+    # If missing any of obligatory fields:
+    result = ""
+    if txt_configmap is None or \
+       len(txt_configmap) == 0:
+        return None
+    configmap = yaml.load(txt_configmap)
+    for e in configmap:
+        if "filesystem" not in e:
+            raise ConfigmapMissingException("Missing filesystem entry", 0)
+        if "mountpoint" not in e:
+            raise ConfigmapMissingException(
+                "Missing mountpoint entry on filesystem {}"
+                .format(e["filesystem"]), 1)
+        if "type" not in e:
+            raise ConfigmapMissingException(
+                "Missing type entry on filesystem {}"
+                .format(e["type"]), 2)
+        if e['type'] is None:
+            e['type'] = ""
+        # Do not block or raise anything here since list is not exhaustive
+        if e['type'] not in EXPECTED_FS_TYPES:
+            result = result + \
+                     "Unrecognized FS type: {} for filesystem: {}" \
+                     .format(e["type"],
+                             e["filesystem"])
+        # Ensure all folders are created beforehand
+        try:
+            subprocess.check_output(['mkdir', '-p', e['mountpoint']])
+        except subprocess.CalledProcessError as e:
+            raise ConfigmapMissingException(
+                "Mountpoint {} for filesystem {} failed mkdir -p"
+                .format(e["mountpoint"],
+                        e["filesystem"]), 3)
+        if len(os.listdir(e["mountpoint"])) != 0:
+            # Folder has content
+            raise ConfigmapMissingException(
+                "Mountpoint {} for filesystem {} is not empty"
+                .format(e["mountpoint"],
+                        e["filesystem"]), 4)
+        if e["type"] == "nfs":
+            try:
+                subprocess.check_output(['showmount',
+                                         '-e',
+                                         '{}'
+                                         .format(e['filesystem']
+                                                 .split(':')[0])])
+            except subprocess.CalledProcessError as e:
+                raise ConfigmapMissingException(
+                    "Mountpoint {} for filesystem {} "
+                    "NFS target is unreachable"
+                    .format(e["mountpoint"],
+                            e["filesystem"]), 5)
+    if result == "":
+        return None
+    return result
+
+
+def dict_to_fstab(fs_configmap, old_configmap=None,
+                  enforce=False, timeout=300):
+
     fstab = ''
     # Ensure we keep the original value of configmap unchanged
-    if fs_configmap == None or \
+    if fs_configmap is None or \
        len(fs_configmap) == 0:
         fs_list = []
     else:
@@ -32,7 +112,7 @@ def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
 
     if not enforce:
         # Cleaning up old_configmap
-        if old_configmap != None and \
+        if old_configmap is not None and \
            len(old_configmap) > 0:
             for n in old_configmap:
                 for fs in fstab:
@@ -50,51 +130,11 @@ def dict_to_fstab(fs_configmap, old_configmap=None, enforce=False, timeout=300):
     else:
         fstab = fs_list
 
-    # This takes care of fstab particularlities, such as "and" presence
-    for fs in fstab:
-        if ('rsize' in fs) and ('wsize' in fs) and (fs['type'] == 'nfs'):
-            if len(fs['options']) > 0:
-                fs['options'] = 'rsize={} and wsize={},{}'.format(
-                    fs['rsize'], fs['wsize'], fs['options']
-                )
-            else:
-                fs['options'] = 'rsize={} and wsize={}'.format(
-                    fs['rsize'], fs['wsize']
-                )
-        elif ('rsize' in fs) and (fs['type'] == 'nfs'):
-            if len(fs['options']) > 0:
-                fs['options'] = 'rsize={},{}'.format(
-                    fs['rsize'], fs['options']
-                )
-            else:
-                fs['options'] = 'rsize={}'.format(
-                    fs['rsize']
-                )
-        elif ('wsize' in fs) and (fs['type'] == 'nfs'):
-            if len(fs['options']) > 0:
-                fs['options'] = 'wsize={},{}'.format(
-                    fs['wsize'], fs['options']
-                )
-            else:
-                fs['options'] = 'wsize={}'.format(
-                    fs['wsize']
-                )
     templ = Environment(loader=BaseLoader()).from_string(fstab_template)
     fstab_content = templ.render(fstab=fstab)
     with open('/etc/fstab', 'w') as f:
         f.write(fstab_content)
         f.close()
-    # Ensure all folders are created beforehand
-    for fs in fstab:
-        if fs['mountpoint'] == None or len(fs['mountpoint']) == 0:
-            raise Exception("Mount point missing for {}".format(fs))
-        subprocess.check_output(['mkdir','-p',fs['mountpoint']])
-    try:
-        subprocess.check_output(['mount', '-a'], timeout=timeout)
-    except subprocess.TimeoutExpired:
-        hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
-    except subprocess.CalledProcessError:
-        hookenv.status_set('blocked','MOUNT ERROR! Please, check configmap')
 
 
 def fstab_to_dict(fstab):
@@ -103,17 +143,20 @@ def fstab_to_dict(fstab):
     # clean comments from lines
     fs = [re.sub(r'\#.*$', '', i) for i in fstab if not i.startswith('#')]
     # and, remove the newline if present
-    fs = [re.sub(r'(\r\n|\r|\n)', '', i) for i in fs if len(re.sub(r'(\r\n|\r|\n)', '', i))>0]
+    fs = [re.sub(r'(\r\n|\r|\n)', '', i)
+          for i in fs if len(re.sub(r'(\r\n|\r|\n)', '', i)) > 0]
     for i in fs:  # Now we process line by line
-        attrs = re.split(' |\t',i)
+        attrs = re.split(' |\t', i)
         # As per: https://help.ubuntu.com/community/Fstab
         # we need to account for a case where we have:
-        # Server:/share  /media/nfs  nfs  rsize=8192 and wsize=8192,noexec,nosuid
+        # Server:/share  /media/nfs  nfs
+        #      rsize=8192 and wsize=8192,noexec,nosuid
         # that will break into 'rsize=8192','and','wsize=8192,noexec,nosuid'
         for j in attrs:
             if j == 'and':
                 index = attrs.index(j)
-                attrs[index-1] = '{},{}'.format(attrs[index-1],attrs[index+1])
+                attrs[index-1] = '{},{}'.format(attrs[index-1],
+                                                attrs[index+1])
                 # Merged whatever existed between and
                 # Now clean up since it is all in the same string
                 attrs.remove(attrs[index+1])

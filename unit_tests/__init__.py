@@ -8,5 +8,3 @@ sys.path.append('src/lib')
 apt = mock.MagicMock()
 
 sys.modules['charms.apt'] = apt
-#sys.modules['queue_install'] = mock.Mock()
-

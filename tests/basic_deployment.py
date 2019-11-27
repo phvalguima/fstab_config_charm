@@ -9,13 +9,13 @@ import time
 import zaza.model as model
 import asyncio
 
-CONFIGMAP_TEST_001="""- filesystem: {}:/srv/nfs
+CONFIGMAP_TEST_001 = """- filesystem: {}:/srv/nfs
   mountpoint: /srv/test
   type: nfs
   options: rw,nosuid
 """
 
-CONFIGMAP_TEST_002=CONFIGMAP_TEST_001 + """
+CONFIGMAP_TEST_002 = CONFIGMAP_TEST_001 + """
 - filesystem: /srv/test
   mountpoint: /srv/testbind
   type: none
@@ -28,7 +28,6 @@ MODEL_DEFAULT_NAME = 'default'
 class BasicDeployment(unittest.TestCase):
 
     nfs_public_address = ""
-
 
     def test_001_nfs_integration(self):
 
@@ -54,12 +53,16 @@ class BasicDeployment(unittest.TestCase):
             return(await model.async_set_application_config(name, config))
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        fstab_app = loop.run_until_complete(await_app_config('fstab-config', {'configmap': fstab_config}))
-        
-        result = model.run_on_leader('fstab-config', 'sudo touch /srv/test/test001')
+        fstab_app = loop.run_until_complete(
+            await_app_config('fstab-config',
+                             {
+                                 'configmap': fstab_config
+                             }))
+
+        result = model.run_on_leader('fstab-config',
+                                     'sudo touch /srv/test/test001')
         self.assertEqual(result['Code'], '0')
-        
-        
+
     def test_002_nfs_bind(self):
 
         fstab_config = CONFIGMAP_TEST_002.format(self.nfs_public_address)
@@ -68,7 +71,10 @@ class BasicDeployment(unittest.TestCase):
             return(await model.async_set_application_config(name, config))
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        fstab_app = loop.run_until_complete(await_app_config('fstab-config', {'configmap': fstab_config}))
-        
-        result = model.run_on_leader('fstab-config', 'sudo touch /srv/testbind/test002')
+        fstab_app = loop.run_until_complete(
+            await_app_config('fstab-config',
+                             {'configmap': fstab_config}))
+
+        result = model.run_on_leader('fstab-config',
+                                     'sudo touch /srv/testbind/test002')
         self.assertEqual(result['Code'], '0')

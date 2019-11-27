@@ -28,18 +28,18 @@ def install_fstab_config():
     #
     queue_install(['nfs-common',
                    'cifs-utils'])
-    hookenv.status_set('maintenance','waiting for installation')
+    hookenv.status_set('maintenance', 'waiting for installation')
 
 
 @when('apt.installed.nfs-common')
 @when('apt.installed.cifs-utils')
 def set_installed_message():
     db = unitdata.kv()
-    db.set('previous_configmap',"")
-    db.set('stab_last_update',"")
+    db.set('previous_configmap', "")
+    db.set('stab_last_update', "")
     db.flush()
-    set_flag('fstab_config.installed')    
-    hookenv.status_set('active','ready')
+    set_flag('fstab_config.installed')
+    hookenv.status_set('active', 'ready')
 
 
 def is_equal_list_dicts(a, b):
@@ -49,25 +49,37 @@ def is_equal_list_dicts(a, b):
     for elem in a:
         for el_b in b:
             for i in elem:
-                if not i in el_b:
+                if i not in el_b:
                     return False
                 if elem[i] != el_b[i]:
                     return False
     return True
-            
+
 
 @when('config.changed.configmap')
 @when('fstab_config.installed')
 def config_changed():
+
+    fstab_entries = hookenv.config('configmap')
+    try:
+        ret_check = fstab_parser.check_configmap(fstab_entries)
+        if ret_check is not None:
+            hookenv.log('(config_changed.check_configmap) {}'
+                        .format(ret_check),
+                        hookenv.WARNING)
+    except fstab_parser.ConfigmapMissingException as e:
+        hookenv.status_set('blocked', str(e))
+        return
+
     db = unitdata.kv()
     old_configmap = yaml.load(db.get('previous_configmap'))
-    fstab_entries = hookenv.config('configmap')    
-    hookenv.status_set('maintenance','[config-changed] updating fstab following configmap...')
+    hookenv.status_set('maintenance', '[config-changed] '
+                       'updating fstab following configmap...')
     configmap = yaml.load(fstab_entries)
 
-    if configmap == None or len(configmap) == 0:
+    if configmap is None or len(configmap) == 0:
         configmap = list()
-    if old_configmap == None or len(old_configmap) == 0:
+    if old_configmap is None or len(old_configmap) == 0:
         old_configmap = list()
 
     if is_equal_list_dicts(configmap, old_configmap):
@@ -83,32 +95,41 @@ def config_changed():
     try:
         fstab_parser.dict_to_fstab(configmap,
                                    old_configmap,
-                                   hookenv.config('enforce-config'),                               
+                                   hookenv.config('enforce-config'),
                                    hookenv.config('mount-timeout'))
     except subprocess.TimeoutExpired:
-        hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
+        hookenv.status_set('blocked', 'Timed out on mount. '
+                           'Please, check configmap')
     except subprocess.CalledProcessError:
-        hookenv.status_set('blocked','MOUNT ERROR! Please, check configmap')
-    
+        hookenv.status_set('blocked', 'MOUNT ERROR! Please, '
+                           'check configmap')
+
     now = get_last_modification_fstab()
     db.set('fstab_last_update', now)
     db.flush()
     db.set('previous_configmap', hookenv.config('configmap'))
     db.flush()
-    hookenv.status_set('active','ready')
+    hookenv.status_set('active', 'ready')
 
 
 @when('update.status')
 def update_status():
-    recent_mod = get_last_modification_fstab()
-    last_mod = unitdata.kv().get('stab_last_update')
-    hookenv.log('update_status: most recent mod happened on {} '
-                'and stored mod happened on {}'.format(recent_mod, last_mod),
-                hookenv.INFO)
-    if recent_mod > last_mod:
-        config_changed()
+    if hookenv.config('enforce'):
+        recent_mod = get_last_modification_fstab()
+        last_mod = unitdata.kv().get('stab_last_update')
+        hookenv.log('update_status: most recent mod happened on {} '
+                    'and stored mod happened on {}'
+                    .format(recent_mod, last_mod),
+                    hookenv.INFO)
+        if recent_mod > last_mod:
+            config_changed()
+
     try:
-        subprocess.check_output(['mount', '-a'], timeout=hookenv.config('mount-timeout'))
+        subprocess.check_output(['mount', '-a'],
+                                timeout=hookenv.config('mount-timeout'))
     except subprocess.TimeoutExpired:
-        hookenv.status_set('blocked','Timed out on mount. Please, check configmap')
-        
+        hookenv.status_set('blocked', 'Timed out on mount. '
+                           'Please, check configmap')
+    except subprocess.CalledProcessError:
+        hookenv.status_set('blocked', 'MOUNT ERROR! Please, '
+                           'check configmap')

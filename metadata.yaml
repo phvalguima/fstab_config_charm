@@ -9,3 +9,5 @@ subordinate: false
 series:
   - xenial
   - bionic
+  - disco
+  - eoan

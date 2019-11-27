@@ -80,12 +80,12 @@ class BasicDeployment(unittest.TestCase):
                                      'sudo touch /srv/testbind/test002')
         self.assertEqual(result['Code'], '0')
 
-    def test_003_bionic_to_cosmic_upgrade(self):
+    def test_003_bionic_to_disco_upgrade(self):
 
         series_upgrade_application('fstab-config',
                                    pause_non_leader_primary=False,
                                    from_series="bionic",
-                                   to_series="cosmic")
+                                   to_series="disco")
         result = model.run_on_leader('fstab-config',
                                      'sudo touch /srv/testbind/test003')
         self.assertEqual(result['Code'], '0')

@@ -61,22 +61,11 @@ def is_equal_list_dicts(a, b):
 def config_changed():
 
     fstab_entries = hookenv.config('configmap')
-    try:
-        ret_check = fstab_parser.check_configmap(fstab_entries)
-        if ret_check is not None:
-            hookenv.log('(config_changed.check_configmap) {}'
-                        .format(ret_check),
-                        hookenv.WARNING)
-    except fstab_parser.ConfigmapMissingException as e:
-        hookenv.status_set('blocked', str(e))
-        return
-
+    configmap = yaml.load(fstab_entries)
     db = unitdata.kv()
     old_configmap = yaml.load(db.get('previous_configmap'))
     hookenv.status_set('maintenance', '[config-changed] '
                        'updating fstab following configmap...')
-    configmap = yaml.load(fstab_entries)
-
     if configmap is None or len(configmap) == 0:
         configmap = list()
     if old_configmap is None or len(old_configmap) == 0:
@@ -92,11 +81,28 @@ def config_changed():
                     hookenv.INFO)
         return
 
+    fstab_content = fstab_parser.dict_to_fstab(configmap,
+                                               old_configmap,
+                                               hookenv.config('enforce-config'),
+                                               hookenv.config('mount-timeout'))
+
     try:
-        fstab_parser.dict_to_fstab(configmap,
-                                   old_configmap,
-                                   hookenv.config('enforce-config'),
-                                   hookenv.config('mount-timeout'))
+        ret_check = fstab_parser.check_configmap(fstab_entries)
+        if ret_check is not None:
+            hookenv.log('(config_changed.check_configmap) {}'
+                        .format(ret_check),
+                        hookenv.WARNING)
+    except fstab_parser.ConfigmapMissingException as e:
+        hookenv.status_set('blocked', str(e))
+        return
+    
+    with open('/etc/fstab', 'w') as f:
+        f.write(fstab_content)
+        f.close()
+
+    try:
+        subprocess.check_output(['mount', '-a'],
+                                timeout=hookenv.config('mount-timeout'))
     except subprocess.TimeoutExpired:
         hookenv.status_set('blocked', 'Timed out on mount. '
                            'Please, check configmap')

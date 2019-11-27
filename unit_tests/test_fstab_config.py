@@ -100,7 +100,7 @@ class TestCharm(unittest.TestCase):
         mock_kv.return_value.set.return_value = Mock()
         mock_kv.return_value.flush.return_value = Mock()
         m = mock_open(read_data=RAW_FSTAB)
-        with patch('charms.layer.fstab_parser.open', m):
+        with patch('builtins.open', m):
             config_changed()
         m().write.assert_called_once_with(
             TEST_001_EXPECTED_RESULT_FSTAB
@@ -129,7 +129,7 @@ class TestCharm(unittest.TestCase):
         mock_kv.return_value.set.return_value = Mock()
         mock_kv.return_value.flush.return_value = Mock()
         m = mock_open(read_data=TEST_001_EXPECTED_RESULT_FSTAB)
-        with patch('charms.layer.fstab_parser.open', m):
+        with patch('builtins.open', m):
             config_changed()
         m().write.assert_called_once_with(
             TEST_002_EXPECTED_RESULT_FSTAB
@@ -162,7 +162,7 @@ class TestCharm(unittest.TestCase):
         mock_kv.return_value.set.return_value = Mock()
         mock_kv.return_value.flush.return_value = Mock()
         m = mock_open(read_data=TEST_001_EXPECTED_RESULT_FSTAB)
-        with patch('charms.layer.fstab_parser.open', m):
+        with patch('builtins.open', m):
             config_changed()
         mock_log.assert_called_once_with(
             '(config_changed.check_configmap) '

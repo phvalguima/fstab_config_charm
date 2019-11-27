@@ -132,10 +132,7 @@ def dict_to_fstab(fs_configmap, old_configmap=None,
 
     templ = Environment(loader=BaseLoader()).from_string(fstab_template)
     fstab_content = templ.render(fstab=fstab)
-    with open('/etc/fstab', 'w') as f:
-        f.write(fstab_content)
-        f.close()
-
+    return fstab_content
 
 def fstab_to_dict(fstab):
     result = []

@@ -1,4 +1,5 @@
 import os
+import copy
 import yaml
 import subprocess
 
@@ -33,11 +34,8 @@ def install_fstab_config():
 
 @when('apt.installed.nfs-common')
 @when('apt.installed.cifs-utils')
+@when_not('fstab_config.installed')
 def set_installed_message():
-    db = unitdata.kv()
-    db.set('previous_configmap', "")
-    db.set('stab_last_update', "")
-    db.flush()
     set_flag('fstab_config.installed')
     hookenv.status_set('active', 'ready')
 
@@ -58,12 +56,14 @@ def is_equal_list_dicts(a, b):
 
 @when('config.changed.configmap')
 @when('fstab_config.installed')
+@when_not('update-status')
 def config_changed():
 
     fstab_entries = hookenv.config('configmap')
-    configmap = yaml.load(fstab_entries)
+    configmap = copy.deepcopy(yaml.load(fstab_entries))
     db = unitdata.kv()
-    old_configmap = yaml.load(db.get('previous_configmap'))
+    old_configmap = yaml.load(db.get('previous_configmap', default=""))
+    hookenv.log('Old Configmap recovered from DB is: {}'.format(old_configmap))
     hookenv.status_set('maintenance', '[config-changed] '
                        'updating fstab following configmap...')
     if configmap is None or len(configmap) == 0:
@@ -81,13 +81,17 @@ def config_changed():
                     hookenv.INFO)
         return
 
+    configmap = fstab_parser.remove_redundancies(
+        target_configmap=configmap,
+        other_cm=old_configmap)
+
     fstab_content = fstab_parser.dict_to_fstab(configmap,
                                                old_configmap,
                                                hookenv.config('enforce-config'),
                                                hookenv.config('mount-timeout'))
 
     try:
-        ret_check = fstab_parser.check_configmap(fstab_entries)
+        ret_check = fstab_parser.check_configmap(configmap)
         if ret_check is not None:
             hookenv.log('(config_changed.check_configmap) {}'
                         .format(ret_check),
@@ -95,7 +99,7 @@ def config_changed():
     except fstab_parser.ConfigmapMissingException as e:
         hookenv.status_set('blocked', str(e))
         return
-    
+
     with open('/etc/fstab', 'w') as f:
         f.write(fstab_content)
         f.close()
@@ -122,7 +126,7 @@ def config_changed():
 def update_status():
     if hookenv.config('enforce'):
         recent_mod = get_last_modification_fstab()
-        last_mod = unitdata.kv().get('stab_last_update')
+        last_mod = unitdata.kv().get('fstab_last_update', default="")
         hookenv.log('update_status: most recent mod happened on {} '
                     'and stored mod happened on {}'
                     .format(recent_mod, last_mod),

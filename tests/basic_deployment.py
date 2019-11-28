@@ -66,6 +66,8 @@ class BasicDeployment(unittest.TestCase):
 
     def test_002_nfs_bind(self):
 
+        import pdb
+        pdb.set_trace()
         nfs = model.get_unit_from_name('ubuntu/0')
         fstab_config = CONFIGMAP_TEST_002.format(nfs.public_address)
         print("Testing on following option:\n{}".format(fstab_config))

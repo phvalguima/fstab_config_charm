@@ -2,6 +2,7 @@ from mock import (
     patch,
     Mock,
     mock_open,
+    call,
 )
 import yaml
 import unittest
@@ -65,7 +66,7 @@ TEST_001_NEW_CONFIG = """- filesystem: UUID=aaa-bbb
   pass: 2
 """
 
-TEST_003_WRONG_CONFIG = """- filesystem: UUID=aaa-bbb
+TEST_003_WRONG_CONFIG = """- filesystem: UUID=ccc-ccc
   mountpoint: /
   type: blabla
   options: testing
@@ -164,8 +165,5 @@ class TestCharm(unittest.TestCase):
         m = mock_open(read_data=TEST_001_EXPECTED_RESULT_FSTAB)
         with patch('builtins.open', m):
             config_changed()
-        mock_log.assert_called_once_with(
-            '(config_changed.check_configmap) '
-            'Unrecognized FS type: blabla for filesystem: UUID=aaa-bbb',
-            hookenv.WARNING
-        )
+        calls = [call("Old Configmap recovered from DB is: [{'filesystem': 'UUID=aaa-bbb', 'mountpoint': '/', 'type': 'ext4', 'options': 'testing', 'dump': 0, 'pass': 1}, {'filesystem': 'nfs:/shares', 'mountpoint': '/test/var', 'type': 'nfs', 'options': 'rsize=10,wsize=8192', 'dump': 0, 'pass': 2}]"), call('(config_changed.check_configmap) Unrecognized FS type: blabla for filesystem: UUID=ccc-ccc', 'WARNING')]
+        mock_log.assert_has_calls(calls, any_order=True)

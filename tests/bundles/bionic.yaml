@@ -9,7 +9,7 @@ applications:
     to:
     - 0
   fstab-config:
-    charm: cs:~pguimaraes/fstab-config
+    charm: /tmp/charm-builds/fstab-config
     num_units: 1
     to:
     - 1

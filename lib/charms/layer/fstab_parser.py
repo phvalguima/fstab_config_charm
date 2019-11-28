@@ -17,7 +17,7 @@ fstab_template = """# /etc/fstab: static file system information.
 {% endfor %}
 """
 
-EXPECTED_FS_TYPES=["xt2", "ext3", "ext4", "xfs", "btrfs", "vfat", "sysfs", "proc", "nfs", "cifs", ""]
+EXPECTED_FS_TYPES=["xt2", "ext3", "ext4", "xfs", "btrfs", "vfat", "sysfs", "proc", "nfs", "cifs", "none"]
 
 
 class ConfigmapMissingException(Exception):
@@ -37,13 +37,9 @@ class ConfigmapMissingException(Exception):
 
 # Returns None if everything went OK
 # Returns message to WARN logs otherwise
-def check_configmap(txt_configmap):
+def check_configmap(configmap):
     # If missing any of obligatory fields:
     result = ""
-    if txt_configmap is None or \
-       len(txt_configmap) == 0:
-        return None
-    configmap = yaml.load(txt_configmap)
     for e in configmap:
         if "filesystem" not in e:
             raise ConfigmapMissingException("Missing filesystem entry", 0)
@@ -95,44 +91,43 @@ def check_configmap(txt_configmap):
     return result
 
 
+# Remove any entry from target present on both configmaps
+def remove_redundancies(target_configmap,
+                        other_cm):
+
+    if other_cm is not None and \
+       len(other_cm) > 0:
+        for n in other_cm:
+            for fs in target_configmap:
+                if n['filesystem'] == fs['filesystem']:
+                    target_configmap.remove(fs)
+                    break
+    return target_configmap
+
+
 def dict_to_fstab(fs_configmap, old_configmap=None,
                   enforce=False, timeout=300):
 
     fstab = ''
-    # Ensure we keep the original value of configmap unchanged
-    if fs_configmap is None or \
-       len(fs_configmap) == 0:
-        fs_list = []
-    else:
-        fs_list = list(fs_configmap)
 
     with open('/etc/fstab', 'r') as f:
         fstab = fstab_to_dict(f.readlines())
         f.close()
 
-    if not enforce:
-        # Cleaning up old_configmap
-        if old_configmap is not None and \
-           len(old_configmap) > 0:
-            for n in old_configmap:
-                for fs in fstab:
-                    if n['filesystem'] == fs['filesystem']:
-                        fstab.remove(fs)
-                        break
-        # Cleaning up double entries from fstab parameter
-        for n in fs_list:
-            for fs in fstab:
-                if n['filesystem'] == fs['filesystem']:
-                    fstab.remove(fs)
-                    break
-        for fs in fs_list:
+    if not enforce:        
+        remove_redundancies(
+            target_configmap=fstab, other_cm=fs_configmap)
+        remove_redundancies(
+            target_configmap=fstab, other_cm=old_configmap)
+        for fs in fs_configmap:
             fstab.append(fs)
     else:
-        fstab = fs_list
+        fstab = fs_configmap
 
     templ = Environment(loader=BaseLoader()).from_string(fstab_template)
     fstab_content = templ.render(fstab=fstab)
     return fstab_content
+
 
 def fstab_to_dict(fstab):
     result = []

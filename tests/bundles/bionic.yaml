@@ -2,6 +2,8 @@ series: bionic
 machines:
   "0":
   "1":
+  "2":
+  "3":
 applications:
   ubuntu:
     charm: cs:ubuntu
@@ -10,6 +12,8 @@ applications:
     - 0
   fstab-config:
     charm: /tmp/charm-builds/fstab-config
-    num_units: 1
+    num_units: 3
     to:
     - 1
+    - 2
+    - 3

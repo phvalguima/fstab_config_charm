@@ -7,7 +7,7 @@ charm does not have any relations or config options to exercise.
 import unittest
 import time
 import zaza.model as model
-import zaza.utilities.generic as series_upgrade_application
+from zaza.utilities.generic import series_upgrade_application
 import asyncio
 
 
@@ -66,8 +66,6 @@ class BasicDeployment(unittest.TestCase):
 
     def test_002_nfs_bind(self):
 
-        import pdb
-        pdb.set_trace()
         nfs = model.get_unit_from_name('ubuntu/0')
         fstab_config = CONFIGMAP_TEST_002.format(nfs.public_address)
         print("Testing on following option:\n{}".format(fstab_config))
@@ -84,6 +82,7 @@ class BasicDeployment(unittest.TestCase):
 
     def test_003_bionic_to_disco_upgrade(self):
 
+        model.run_on_leader('fstab-config', "sudo sed -i 's/Prompt=lts/Prompt=normal/g' /etc/update-manager/release-upgrades")
         series_upgrade_application('fstab-config',
                                    pause_non_leader_primary=False,
                                    from_series="bionic",

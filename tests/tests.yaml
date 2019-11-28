@@ -1,8 +1,8 @@
 gate_bundles:
-#- xenial
-- bionic
+- xenial
+#- bionic
 smoke_bundles:
-- bionic
+- xenial
 tests:
 - tests.basic_deployment.BasicDeployment
 

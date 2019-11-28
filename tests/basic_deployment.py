@@ -80,13 +80,24 @@ class BasicDeployment(unittest.TestCase):
                                      'sudo touch /srv/testbind/test002')
         self.assertEqual(result['Code'], '0')
 
+
     def test_003_bionic_to_disco_upgrade(self):
 
-        model.run_on_leader('fstab-config', "sudo sed -i 's/Prompt=lts/Prompt=normal/g' /etc/update-manager/release-upgrades")
+        series_upgrade_application('fstab-config',
+                                   pause_non_leader_primary=False,
+                                   from_series="xenial",
+                                   to_series="bionic")
+        result = model.run_on_leader('fstab-config',
+                                     'sudo touch /srv/testbind/test003')
+        self.assertEqual(result['Code'], '0')
+
+
+    def test_004_bionic_to_disco_upgrade(self):
+
         series_upgrade_application('fstab-config',
                                    pause_non_leader_primary=False,
                                    from_series="bionic",
                                    to_series="disco")
         result = model.run_on_leader('fstab-config',
-                                     'sudo touch /srv/testbind/test003')
+                                     'sudo touch /srv/testbind/test004')
         self.assertEqual(result['Code'], '0')

@@ -15,6 +15,7 @@ def get_last_modification_fstab():
 
 
 @when_not('fstab_config.installed')
+@when_not('series-upgrade-started')
 def install_fstab_config():
     # Do your setup here.
     #
@@ -35,6 +36,7 @@ def install_fstab_config():
 @when('apt.installed.nfs-common')
 @when('apt.installed.cifs-utils')
 @when_not('fstab_config.installed')
+@when_not('series-upgrade-started')
 def set_installed_message():
     set_flag('fstab_config.installed')
     hookenv.status_set('active', 'ready')
@@ -57,6 +59,7 @@ def is_equal_list_dicts(a, b):
 @when('config.changed.configmap')
 @when('fstab_config.installed')
 @when_not('update-status')
+@when_not('series-upgrade-started')
 def config_changed():
 
     fstab_entries = hookenv.config('configmap')
@@ -122,7 +125,8 @@ def config_changed():
     hookenv.status_set('active', 'ready')
 
 
-@when('update.status')
+@when('update-status')
+@when_not('series-upgrade-started')
 def update_status():
     if hookenv.config('enforce'):
         recent_mod = get_last_modification_fstab()
@@ -143,3 +147,25 @@ def update_status():
     except subprocess.CalledProcessError:
         hookenv.status_set('blocked', 'MOUNT ERROR! Please, '
                            'check configmap')
+
+
+@when('upgrade.series.in-progress')
+def pre_series_upgrade():
+    hookenv.status_set('blocked','pre-series-upgrade procedure started')
+    hookenv.log('Dispatched pre-series-upgrade', hookenv.INFO)
+    try:
+        # Allow to move between distros
+        subprocess.check_output(['sed', '-i',
+                                 's/Prompt=lts/Prompt=normal/g',
+                                 '/etc/update-manager/release-upgrades'])
+    except Exception as e:
+        hookenv.log("Failed pre-series-upgrade run to "
+                    "change Prompt for normal upgrades: {}".format(str(e)))
+        raise e
+    set_flag('series-upgrade-started')
+
+@when('series-upgrade-started')
+@when_not('upgrade.series.in-progress')
+def post_series_upgrade():
+    hookenv.log('Dispatched post-series-upgrade', hookenv.INFO)
+    hookenv.status_set('active', 'ready')

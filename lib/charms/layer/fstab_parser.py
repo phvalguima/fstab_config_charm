@@ -2,22 +2,22 @@ import re
 import os
 import subprocess
 import yaml
-from jinja2 import Environment, BaseLoader
+from jinja2 import Environment, BaseLoader, FileSystemLoader
 
-fstab_template = """# /etc/fstab: static file system information.
-#
-# Use 'blkid' to print the universally unique identifier for a
-# device; this may be used with UUID= as a more robust way to name devices
-# that works even if disks are added and removed. See fstab(5).
-#
-# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+ 
 
-{% for fs in fstab %}
-{{ fs['filesystem'] }} {{ fs['mountpoint'] }} {{ fs['type'] }} {{ fs['options'] }} {{ fs['dump'] }} {{ fs['pass'] }}
-{% endfor %}
-"""
-
-EXPECTED_FS_TYPES=["xt2", "ext3", "ext4", "xfs", "btrfs", "vfat", "sysfs", "proc", "nfs", "cifs", "none"]
+EXPECTED_FS_TYPES=["xt2",
+                   "ext3",
+                   "ext4",
+                   "xfs",
+                   "btrfs",
+                   "vfat",
+                   "sysfs",
+                   "proc",
+                   "nfs",
+                   "cifs",
+                   "none"
+]
 
 
 class ConfigmapMissingException(Exception):
@@ -114,7 +114,7 @@ def dict_to_fstab(fs_configmap, old_configmap=None,
         fstab = fstab_to_dict(f.readlines())
         f.close()
 
-    if not enforce:        
+    if not enforce:
         remove_redundancies(
             target_configmap=fstab, other_cm=fs_configmap)
         remove_redundancies(
@@ -124,8 +124,10 @@ def dict_to_fstab(fs_configmap, old_configmap=None,
     else:
         fstab = fs_configmap
 
-    templ = Environment(loader=BaseLoader()).from_string(fstab_template)
+    templateLoader = FileSystemLoader(searchpath="./templates")
+    templ = Environment(loader=templateLoader).get_template("fstab.template")
     fstab_content = templ.render(fstab=fstab)
+
     return fstab_content
 
 

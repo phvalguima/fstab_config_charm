@@ -90,7 +90,8 @@ def config_changed():
 
     fstab_content = fstab_parser.dict_to_fstab(configmap,
                                                old_configmap,
-                                               hookenv.config('enforce-config'),
+                                               hookenv
+                                               .config('enforce-config'),
                                                hookenv.config('mount-timeout'))
 
     try:
@@ -151,7 +152,7 @@ def update_status():
 
 @when('upgrade.series.in-progress')
 def pre_series_upgrade():
-    hookenv.status_set('blocked','pre-series-upgrade procedure started')
+    hookenv.status_set('blocked', 'pre-series-upgrade procedure started')
     hookenv.log('Dispatched pre-series-upgrade', hookenv.INFO)
     try:
         # Allow to move between distros
@@ -163,6 +164,7 @@ def pre_series_upgrade():
                     "change Prompt for normal upgrades: {}".format(str(e)))
         raise e
     set_flag('series-upgrade-started')
+
 
 @when('series-upgrade-started')
 @when_not('upgrade.series.in-progress')

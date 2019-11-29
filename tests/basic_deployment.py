@@ -80,7 +80,6 @@ class BasicDeployment(unittest.TestCase):
                                      'sudo touch /srv/testbind/test002')
         self.assertEqual(result['Code'], '0')
 
-
     def test_003_bionic_to_disco_upgrade(self):
 
         series_upgrade_application('fstab-config',
@@ -91,7 +90,6 @@ class BasicDeployment(unittest.TestCase):
                                      'sudo touch /srv/testbind/test003')
         self.assertEqual(result['Code'], '0')
 
-
     def test_004_bionic_to_disco_upgrade(self):
 
         series_upgrade_application('fstab-config',
@@ -100,4 +98,14 @@ class BasicDeployment(unittest.TestCase):
                                    to_series="disco")
         result = model.run_on_leader('fstab-config',
                                      'sudo touch /srv/testbind/test004')
+        self.assertEqual(result['Code'], '0')
+
+    def test_005_disco_to_eoan_upgrade(self):
+
+        series_upgrade_application('fstab-config',
+                                   pause_non_leader_primary=False,
+                                   from_series="disco",
+                                   to_series="eoan")
+        result = model.run_on_leader('fstab-config',
+                                     'sudo touch /srv/testbind/test005')
         self.assertEqual(result['Code'], '0')

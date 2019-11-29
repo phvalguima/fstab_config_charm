@@ -1,4 +1,10 @@
 options:
+  openstack-origin:
+    type: string
+    default: distro
+    description: |
+      Option available only for compatibility reasons with other openstack
+      charms. Its change will not render any effects on the charm  
   mount-timeout:
     type: int
     default: 20
